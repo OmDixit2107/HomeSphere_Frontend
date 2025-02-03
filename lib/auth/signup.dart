@@ -24,14 +24,20 @@ class _SignUpState extends State<SignUp> {
     final password = passwordController.text.trim();
     final phone = phoneController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || role == null) {
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        phone.isEmpty ||
+        role == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields and select a role')),
+        const SnackBar(
+            content: Text('Please fill in all fields and select a role')),
       );
       return;
     }
 
-    final success = await AuthFunctions.signupUser(name, email, password, phone, role!);
+    final success =
+        await Authfunctions.signupUser(name, email, password, phone, role!);
 
     if (success) {
       Navigator.pushNamed(context, MyRoutes.loginScreen);
@@ -70,7 +76,8 @@ class _SignUpState extends State<SignUp> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                 child: Column(
                   children: [
                     TextFormField(

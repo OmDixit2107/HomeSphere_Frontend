@@ -4,7 +4,7 @@ import 'package:homesphere/services/functions/authFunctions.dart';
 import 'package:homesphere/utils/routes.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -72,15 +72,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     TextButton.icon(
                       onPressed: () async {
-                        String s= await AuthFunctions.loginUser(
+                        String role = await Authfunctions.loginUser(
                           _emailController.text,
                           _passwordController.text,
                         );
-                        if(s=='User'){
+
+                        if (role == 'User') {
+                          // Navigate to User Home
                           Navigator.pushNamed(context, MyRoutes.userHome);
-                        }
-                        else if(s=='Property Owner'){
-                          Navigator.pushNamed(context, MyRoutes.propertyOwnerHome);
+                        } else if (role == 'Property Owner') {
+                          // Navigate to Property Owner Home
+                          Navigator.pushNamed(
+                              context, MyRoutes.propertyOwnerHome);
+                        } else {
+                          // Show error message or handle invalid login
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Invalid login credentials.'),
+                            ),
+                          );
                         }
                       },
                       icon: const Icon(Icons.login),
@@ -88,16 +98,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         alignment: Alignment.center,
                         width: 150,
                         height: 35,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(25),
+                        ),
                         child: const Text(
                           'Sign In',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.white,
                           ),
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(25),
                         ),
                       ),
                     ),

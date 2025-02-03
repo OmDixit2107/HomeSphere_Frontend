@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:homesphere/pages/property_owner/AddPropertyScreen.dart';
+import 'package:homesphere/pages/property_owner/ManageListingsScreen.dart';
+import 'package:homesphere/services/api/UserAPI.dart';
+import 'package:homesphere/services/functions/authFunctions.dart';
+import 'package:homesphere/utils/routes.dart';
 
 class PropertyOwnerHome extends StatefulWidget {
   const PropertyOwnerHome({Key? key}) : super(key: key);
@@ -10,24 +15,61 @@ class PropertyOwnerHome extends StatefulWidget {
 class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _screens = <Widget>[
-    AddPropertyScreen(),
-    ManageListingsScreen(),
-    FinalizeSaleScreen(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  // This function fetches the userId asynchronously
+  Future<int?> _fetchUserId() async {
+    String? email = await Authfunctions.getUserEmail();
+    print("printing " + email); // Fetch the email from shared preferences
+    return await UserApi.getUserIdByEmail(
+        email); // Fetch the userId from the API
   }
 
   @override
   Widget build(BuildContext context) {
+    // Create the screens list
+    List<Widget> _screens = <Widget>[
+      AddPropertyScreen(),
+      FutureBuilder<int?>(
+        future: _fetchUserId(), // Fetch userId asynchronously
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          } else if (snapshot.hasData) {
+            int? userId = snapshot.data;
+            return ManageListingsScreen(
+              userId: userId!, // Safely pass the userId
+            );
+          } else {
+            return const Center(child: Text("User ID not found"));
+          }
+        },
+      ),
+      FinalizeSaleScreen(),
+    ];
+
+    void _onItemTapped(int index) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Property Owner Dashboard'),
         backgroundColor: Colors.red,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Authfunctions.logoutUser();
+              Navigator.pushReplacementNamed(
+                context,
+                MyRoutes.loginScreen,
+              );
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: Center(
         child: _screens.elementAt(_selectedIndex),
@@ -51,29 +93,6 @@ class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
         selectedItemColor: Colors.red,
         onTap: _onItemTapped,
       ),
-    );
-  }
-}
-
-// Placeholder Screens
-class AddPropertyScreen extends StatelessWidget {
-  const AddPropertyScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text("Add Property Screen"),
-    );
-  }
-}
-
-class ManageListingsScreen extends StatelessWidget {
-  const ManageListingsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text("Manage Listings Screen"),
     );
   }
 }

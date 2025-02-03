@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:homesphere/services/functions/authFunctions.dart';
+import 'package:homesphere/utils/routes.dart';
 
 class Userhome extends StatelessWidget {
   const Userhome({super.key});
@@ -8,10 +9,22 @@ class Userhome extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("This is a home screen"),
+        title: const Text("This is a home screen"),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Authfunctions.logoutUser();
+              Navigator.pushReplacementNamed(
+                context,
+                MyRoutes.loginScreen,
+              );
+            },
+            icon: const Icon(Icons.logout),
+          )
+        ],
       ),
       body: Container(
-        child: Text("This is the user screen"),
+        child: const Text("This is the user screen"),
       ),
     );
   }

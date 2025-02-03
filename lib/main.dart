@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:homesphere/pages/property_owner/PropertyOwnerHome.dart';
 import 'package:homesphere/pages/user/UserHome.dart';
-import 'package:homesphere/services/functions/authFunctions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth/login.dart';
 import 'auth/signup.dart';
 import 'utils/routes.dart';
@@ -11,6 +11,8 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -21,10 +23,10 @@ class MyApp extends StatelessWidget {
       initialRoute: '/auth-checker', // Use a custom route for dynamic checks
       routes: {
         '/auth-checker': (context) => AuthChecker(),
-        MyRoutes.loginScreen: (context) => LoginScreen(),
-        MyRoutes.signUp: (context) => SignUp(),
-        MyRoutes.propertyOwnerHome: (context) => PropertyOwnerHome(),
-        MyRoutes.userHome:(context)=>Userhome()
+        MyRoutes.loginScreen: (context) => const LoginScreen(),
+        MyRoutes.signUp: (context) => const SignUp(),
+        MyRoutes.propertyOwnerHome: (context) => const PropertyOwnerHome(),
+        MyRoutes.userHome: (context) => const Userhome(), // Corrected typo
       },
     );
   }
@@ -33,8 +35,8 @@ class MyApp extends StatelessWidget {
 class AuthChecker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: loadHomeScreen(),
+    return FutureBuilder<String>(
+      future: getUserRole(), // Fetch role from SharedPreferences or backend
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -43,17 +45,30 @@ class AuthChecker extends StatelessWidget {
             ),
           );
         }
-        if (snapshot.data == true) {
-          return PropertyOwnerHome();
-        } else {
-          return LoginScreen();
+
+        if (snapshot.hasData) {
+          final role = snapshot.data!;
+          print("this is inside login page\n");
+          print(role);
+          print(role);
+          if (role == 'User') {
+            return const Userhome(); // Navigate to User Home screen
+          } else if (role == 'Property Owner') {
+            return const PropertyOwnerHome(); // Navigate to Property Owner Home screen
+          }
         }
+
+        return const LoginScreen(); // If no role or no data, show the login screen
       },
     );
   }
 }
 
-Future<bool> loadHomeScreen() async {
-  bool isLoggedIn = await AuthFunctions.fetchProtectedData();
-  return isLoggedIn;
+Future<String> getUserRole() async {
+  // Retrieve the user role from SharedPreferences (if stored) or from backend
+  final prefs = await SharedPreferences.getInstance();
+  final role = prefs.getString('userRole') ?? '';
+  print("this is while getting\n");
+  print(role); // Default to empty string if not found
+  return role;
 }

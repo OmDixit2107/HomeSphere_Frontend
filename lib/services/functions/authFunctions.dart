@@ -1,25 +1,12 @@
-import 'dart:convert';
-import 'dart:async';
-import 'package:http/http.dart' as http;
+import 'package:homesphere/services/api/AuthAPI.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-class AuthFunctions {
-  static const String baseUrl = 'http://192.168.1.5:8080/api';
-
+class Authfunctions {
   // Login Function
   static Future<String> loginUser(String email, String password) async {
-    final url = Uri.parse('$baseUrl/login');
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
-    );
+    final response = await AuthApi.login(email, password);
+    print(response);
 
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
@@ -27,123 +14,73 @@ class AuthFunctions {
 
       if (jsessionId != null) {
         await prefs.setString('JSESSIONID', jsessionId);
+        await prefs.setString('email', email);
         print('Login successful. JSESSIONID stored: $jsessionId');
-        print('Response body: ${response.body}');  // Debugging line
-        // Parse the role from the response body
+        String? x = prefs.getString('email');
+        final b = await Authfunctions.getUserEmail();
+        print("Printing B " + b);
+        // Parse role from response body
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        final String role = responseBody['role'];  // Extract role
-
-        // Optionally, save the role in SharedPreferences to use later
-        // await prefs.setString('userRole', role);
-
-        return role;  // Return the role for further handling (admin or propertyowner)
+        final String role = responseBody['role'];
+        print(role);
+        await prefs.setString('userRole', role);
+        return role;
       }
     }
     print('Login failed: ${response.statusCode} - ${response.body}');
-    return "invalid";  // If login fails, return "invalid"
+    return "invalid";
   }
 
-
   // Signup Function
-  static Future<bool> signupUser(String name, String email, String password, String phone, String role) async {
-    final url = Uri.parse('$baseUrl/signup');
-    print(url);
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        "role": role,
-        'contact_No': phone,
-      }),
-    );
-    print(response);
+  static Future<bool> signupUser(String name, String email, String password,
+      String phone, String role) async {
+    final response = await AuthApi.signup(name, email, password, phone, role);
+
     if (response.statusCode == 201) {
-      print('Signup successful: ${response.body}');
       final prefs = await SharedPreferences.getInstance();
       final jsessionId = response.headers['set-cookie']?.split(';').first;
 
       if (jsessionId != null) {
         await prefs.setString('JSESSIONID', jsessionId);
-        print('Login successful. JSESSIONID stored: $jsessionId');
-        return true;
       }
       return true;
     }
-
-    print('Signup failed: ${response.body}');
     return false;
   }
-
 
   // Logout Function
   static Future<bool> logoutUser() async {
-    final url = Uri.parse('$baseUrl/logout');
     final prefs = await SharedPreferences.getInstance();
-    final jsessionId = prefs.getString('JSESSIONID');
 
-    if (jsessionId == null) {
-      print('No session found to log out');
-      return false;
-    }
+    final role = prefs.getString('userRole') ?? '';
+    print("Logging out user with role: $role");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Cookie': jsessionId,
-      },
-    );
-
-    if (response.statusCode == 200) {
-      await prefs.remove('JSESSIONID');
-      print('Logout successful');
-      return true;
-    }
-    print('Logout failed: ${response.body}');
-    return false;
+    await prefs.remove('JSESSIONID');
+    await prefs.remove('userRole');
+    return true;
   }
 
-  static Future<bool> fetchProtectedData() async {
-    final url = Uri.parse('$baseUrl/protected-endpoint');
+  // Retrieve User Role
+  static Future<String> getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsessionId = prefs.getString('JSESSIONID');
-
-    if (jsessionId == null) {
-      print('No session found, user not logged in');
-      return false;
-    }
-
-    try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Cookie': jsessionId,
-        },
-      ).timeout(Duration(seconds: 10)); // Timeout after 10 seconds
-
-      if (response.statusCode == 200) {
-        print('Protected data: ${response.body}');
-        return true;
-      } else {
-        print('Request failed: ${response.statusCode} - ${response.body}');
-        return false;
-      }
-    } on TimeoutException {
-      print("Request timed out!");
-      return false;
-    } catch (e) {
-      print("An error occurred: $e");
-      return false;
-    }
+    return prefs.getString('userRole') ?? "invalid";
   }
 
-  static Future<bool> loadhomescreen() async{
-    bool x = await AuthFunctions.fetchProtectedData();
-    return x;
+  static Future<String> getUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('email') ?? "invalid";
   }
 
+  // Check if User is Authenticated
+  static Future<bool> isAuthenticated() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('JSESSIONID') != null;
+  }
+  // static Future<String> getUserRole() async {
+  // // Retrieve the user role from SharedPreferences (if stored) or from backend
+  // final prefs = await SharedPreferences.getInstance();
+  // final role = prefs.getString('userRole') ?? '';
+  // print("this is while getting\n");
+  // print(role); // Default to empty string if not found
+  // return role;
 }
