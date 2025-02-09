@@ -6,7 +6,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 
 class PropertyOwnerApi {
-  static const String baseUrl = 'http://192.168.1.5:8090/api/properties';
+  static const String baseUrl = 'http://10.0.2.2:8090/api/properties';
 
   static Future<Property?> createProperty(
       Property property, List<File> images) async {

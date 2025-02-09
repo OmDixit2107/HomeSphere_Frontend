@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         MyRoutes.loginScreen: (context) => const LoginScreen(),
         MyRoutes.signUp: (context) => const SignUp(),
         MyRoutes.propertyOwnerHome: (context) => const PropertyOwnerHome(),
-        MyRoutes.userHome: (context) => const Userhome(), // Corrected typo
+        MyRoutes.userHome: (context) => const UserHome(), // Corrected typo
       },
     );
   }
@@ -52,7 +52,7 @@ class AuthChecker extends StatelessWidget {
           print(role);
           print(role);
           if (role == 'User') {
-            return const Userhome(); // Navigate to User Home screen
+            return const UserHome(); // Navigate to User Home screen
           } else if (role == 'Property Owner') {
             return const PropertyOwnerHome(); // Navigate to Property Owner Home screen
           }

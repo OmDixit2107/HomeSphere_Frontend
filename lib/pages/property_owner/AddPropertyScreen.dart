@@ -1,11 +1,10 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:homesphere/models/Property.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
 import 'package:homesphere/services/api/UserAPI.dart';
+import 'package:homesphere/services/functions/ImagePickerService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart'; // Import Image Picker
 
 class AddPropertyScreen extends StatefulWidget {
   const AddPropertyScreen({super.key});
@@ -24,33 +23,26 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   String _selectedType = "Buy";
   String _selectedStatus = "Available";
   bool _emiAvailable = false;
-  List<String> _images = []; // List to store selected images
+  List<String> _images = [];
 
-  final ImagePicker _picker = ImagePicker();
+  final ImagePickerService _imagePickerService = ImagePickerService();
 
-  // Function to pick images
   Future<void> _pickImages() async {
-    final List<XFile>? pickedFiles = await _picker.pickMultiImage();
-
-    if (pickedFiles != null) {
-      setState(() {
-        _images = pickedFiles.map((file) => file.path).toList();
-      });
-    }
+    final images = await _imagePickerService.pickImages();
+    setState(() {
+      _images = images;
+    });
   }
 
   Future<void> _submitProperty() async {
     if (_formKey.currentState!.validate()) {
-      // Step 1: Retrieve email from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final email = prefs.getString("email");
 
       if (email != null) {
-        // Get user data
         final user = await UserApi.getUserByEmail(email);
 
         if (user != null) {
-          // Step 2: Prepare the Property object
           final property = Property(
             user: user,
             title: _titleController.text,
@@ -60,37 +52,24 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             type: _selectedType.toLowerCase(),
             status: _selectedStatus.toLowerCase(),
             emiAvailable: _emiAvailable,
-            images:
-                _images, // Store paths here, will be converted to File objects in the API
+            images: _images,
           );
 
-          // Convert image paths to File objects for API call
           List<File> imageFiles = _images.map((path) => File(path)).toList();
-
-          // Step 3: Create property via API call
           Property? pp =
               await PropertyOwnerApi.createProperty(property, imageFiles);
-          print("this is the property id");
-          print(pp?.id);
-          if (pp != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Property submitted successfully!")),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text("Failed to submit property. Try again.")),
-            );
-          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(pp != null
+                    ? "Property submitted successfully!"
+                    : "Failed to submit property.")),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("User not found. Please try again.")),
           );
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Email not found in preferences.")),
-        );
       }
     }
   }
@@ -120,49 +99,32 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 _buildTextField(
                     _locationController, "Location", "Enter property location"),
                 const SizedBox(height: 10),
-                _buildDropdown("Type", ["Buy", "Rent"], (value) {
-                  setState(() {
-                    _selectedType = value!;
-                  });
-                }),
+                _buildDropdown("Type", ["Buy", "Rent"],
+                    (value) => setState(() => _selectedType = value!)),
                 _buildDropdown("Status", ["Available", "Sold", "Rented"],
-                    (value) {
-                  setState(() {
-                    _selectedStatus = value!;
-                  });
-                }),
+                    (value) => setState(() => _selectedStatus = value!)),
                 SwitchListTile(
                   title: const Text("EMI Available"),
                   value: _emiAvailable,
-                  onChanged: (bool value) {
-                    setState(() {
-                      _emiAvailable = value;
-                    });
-                  },
+                  onChanged: (bool value) =>
+                      setState(() => _emiAvailable = value),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: _pickImages, // Open image picker
-                  child: const Text("Select Images"),
-                ),
+                    onPressed: _pickImages, child: const Text("Select Images")),
                 const SizedBox(height: 10),
                 if (_images.isNotEmpty)
                   Wrap(
                     spacing: 8.0,
                     children: _images.map((imagePath) {
-                      return Image.file(
-                        File(imagePath),
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      );
+                      return Image.file(File(imagePath),
+                          width: 100, height: 100, fit: BoxFit.cover);
                     }).toList(),
                   ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: _submitProperty,
-                  child: const Text("Submit Property"),
-                ),
+                    onPressed: _submitProperty,
+                    child: const Text("Submit Property")),
               ],
             ),
           ),
@@ -179,16 +141,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       maxLines: maxLines,
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: OutlineInputBorder(),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return "Please enter $label";
-        }
-        return null;
-      },
+          labelText: label, hintText: hint, border: OutlineInputBorder()),
+      validator: (value) =>
+          value == null || value.isEmpty ? "Please enter $label" : null,
     );
   }
 
