@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:homesphere/models/Property.dart';
 import 'package:homesphere/pages/property_owner/PropertyPage.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
+import 'package:homesphere/services/functions/ImageSlider.dart';
+import 'package:homesphere/utils/consts.dart';
 import 'package:http/http.dart' as http;
 
 class BuyProperty extends StatefulWidget {
@@ -32,30 +34,30 @@ class _BuyPropertyState extends State<BuyProperty> {
               Container(
                 width: double.infinity,
                 padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.blue, Colors.indigo],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
+                  // borderRadius: BorderRadius.only(
+                  //   bottomLeft: Radius.circular(20),
+                  //   bottomRight: Radius.circular(20),
+                  // ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Buy Property",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    // const SizedBox(height: 20),
+                    // const Text(
+                    //   "Buy Property",
+                    //   style: TextStyle(
+                    //     fontSize: 22,
+                    //     fontWeight: FontWeight.bold,
+                    //     color: Colors.white,
+                    //   ),
+                    // ),
                     const SizedBox(height: 10),
                     // Search Bar
                     Container(
@@ -72,7 +74,7 @@ class _BuyPropertyState extends State<BuyProperty> {
                       ),
                       child: TextField(
                         decoration: const InputDecoration(
-                          hintText: "Search properties...",
+                          hintText: "Search properties To Buy...",
                           prefixIcon: Icon(Icons.search, color: Colors.grey),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
@@ -83,44 +85,15 @@ class _BuyPropertyState extends State<BuyProperty> {
                         },
                       ),
                     ),
+                    // const SizedBox(height: 16),
                   ],
                 ),
               ),
 
-              // Banner Image
-              Stack(
-                children: [
-                  Container(
-                    height: 350,
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage("assets/images/buy1.jpeg"),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    bottom: 20,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        "Find Your Dream Home!",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              // Updated Image Slider
+
+              ImageSlider(images: consts.sliderBuyImages),
+
               const SizedBox(height: 16),
 
               // Properties List Title
