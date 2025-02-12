@@ -25,20 +25,20 @@ class _UserHomeState extends State<UserHome> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("HomeSphere"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Authfunctions.logoutUser();
-              Navigator.pushNamedAndRemoveUntil(
-                  context, MyRoutes.loginScreen, (route) => false);
-            },
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.logout),
+        //     onPressed: () {
+        //       Authfunctions.logoutUser();
+        //       Navigator.pushNamedAndRemoveUntil(
+        //           context, MyRoutes.loginScreen, (route) => false);
+        //     },
+        //   ),
+        // ],
       ),
       body: isBuying
-          ? BuyProperty() // Replace with actual Buy screen
-          : Rentproperty(), // Replace with actual Rent screen
+          ? const BuyProperty() // Replace with actual Buy screen
+          : const RentProperty(), // Replace with actual Rent screen
       bottomNavigationBar: SizedBox(
         height: 60,
         child: Row(
@@ -46,8 +46,9 @@ class _UserHomeState extends State<UserHome> {
             Expanded(
               child: GestureDetector(
                 onTap: () {
-                  if (!isBuying)
+                  if (!isBuying) {
                     toggleScreen(); // Switch to Buy only if not already there
+                  }
                 },
                 child: Container(
                   color: isBuying ? Colors.blue : Colors.grey,
@@ -65,8 +66,9 @@ class _UserHomeState extends State<UserHome> {
             Expanded(
               child: GestureDetector(
                 onTap: () {
-                  if (isBuying)
+                  if (isBuying) {
                     toggleScreen(); // Switch to Rent only if not already there
+                  }
                 },
                 child: Container(
                   color: isBuying ? Colors.grey : Colors.green,

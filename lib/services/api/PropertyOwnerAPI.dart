@@ -91,6 +91,18 @@ class PropertyOwnerApi {
     return [];
   }
 
+  // // Get all properties by type
+  // static Future<List<Property>> getAllPropertiesbyType() async {
+  //   final url = Uri.parse(baseUrl);
+  //   final response = await http.get(url);
+
+  //   if (response.statusCode == 200) {
+  //     List<dynamic> data = jsonDecode(response.body);
+  //     return data.map((e) => Property.fromJson(e)).toList();
+  //   }
+  //   return [];
+  // }
+
   // Get all properties by user id
   static Future<List<Property>> getPropertiesByUserId(int userId) async {
     final url = Uri.parse('$baseUrl/user/$userId');

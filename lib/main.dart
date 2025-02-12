@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:homesphere/pages/property_owner/EditProperty.dart';
 import 'package:homesphere/pages/property_owner/PropertyOwnerHome.dart';
 import 'package:homesphere/pages/user/UserHome.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +27,8 @@ class MyApp extends StatelessWidget {
         MyRoutes.loginScreen: (context) => const LoginScreen(),
         MyRoutes.signUp: (context) => const SignUp(),
         MyRoutes.propertyOwnerHome: (context) => const PropertyOwnerHome(),
-        MyRoutes.userHome: (context) => const UserHome(), // Corrected typo
+        MyRoutes.userHome: (context) => const UserHome(),
+        // MyRoutes.editScreen:(context) => const EditProperty(propertyId: propertyId) // Corrected typo
       },
     );
   }

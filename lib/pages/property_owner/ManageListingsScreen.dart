@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:homesphere/models/Property.dart';
+import 'package:homesphere/pages/property_owner/EditProperty.dart';
+import 'package:homesphere/pages/property_owner/PropertyPage.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
 import 'package:http/http.dart' as http;
 
@@ -71,11 +73,26 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                   trailing: IconButton(
                     icon: const Icon(Icons.edit, color: Colors.blue),
                     onPressed: () {
-                      // Implement edit functionality
+                      // Navigate to edit property screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return EditProperty(propertyId: property.id!);
+                          },
+                        ),
+                      );
                     },
                   ),
                   onTap: () {
-                    // Navigate to property details
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) {
+                          return PropertyPage(property: property);
+                        },
+                      ),
+                    );
                   },
                 ),
               );

@@ -5,4 +5,5 @@ class MyRoutes {
   static String signUp = '/signUp';
   static String propertyOwnerHome = '/propertyOwnerHome';
   static String userHome = '/userHome';
+  static String editScreen = '/editScreen';
 }

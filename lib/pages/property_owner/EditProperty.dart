@@ -2,18 +2,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:homesphere/models/Property.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
-import 'package:homesphere/services/api/UserAPI.dart';
 import 'package:homesphere/services/functions/ImagePickerService.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class AddPropertyScreen extends StatefulWidget {
-  const AddPropertyScreen({super.key});
+class EditProperty extends StatefulWidget {
+  final int propertyId;
+  const EditProperty({super.key, required this.propertyId});
 
   @override
-  State<AddPropertyScreen> createState() => _AddPropertyScreenState();
+  State<EditProperty> createState() => _EditPropertyState();
 }
 
-class _AddPropertyScreenState extends State<AddPropertyScreen> {
+class _EditPropertyState extends State<EditProperty> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -26,60 +25,77 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   List<String> _images = [];
 
   final ImagePickerService _imagePickerService = ImagePickerService();
+  Property? _property;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPropertyDetails();
+  }
+
+  Future<void> _loadPropertyDetails() async {
+    Property? property =
+        await PropertyOwnerApi.getPropertyById(widget.propertyId);
+    if (property != null) {
+      setState(() {
+        _property = property;
+        _titleController.text = property.title;
+        _descriptionController.text = property.description;
+        _priceController.text = property.price.toString();
+        _locationController.text = property.location;
+        _selectedType = property.type;
+        _selectedStatus = property.status;
+        _emiAvailable = property.emiAvailable;
+        _images = property.images;
+      });
+    }
+  }
 
   Future<void> _pickImages() async {
     final images = await _imagePickerService.pickImages();
     setState(() {
-      _images = images;
+      _images.addAll(images);
     });
   }
 
-  Future<void> _submitProperty() async {
+  Future<void> _updateProperty() async {
     if (_formKey.currentState!.validate()) {
-      final prefs = await SharedPreferences.getInstance();
-      final email = prefs.getString("email");
+      List<File> imageFiles =
+          _images.map((imagePath) => File(imagePath)).toList();
 
-      if (email != null) {
-        final user = await UserApi.getUserByEmail(email);
+      final updatedProperty = Property(
+        id: widget.propertyId,
+        user: _property!.user, // Ensuring user is passed correctly
+        title: _titleController.text,
+        description: _descriptionController.text,
+        price: double.tryParse(_priceController.text) ?? 0.0,
+        location: _locationController.text,
+        type: _selectedType.toLowerCase(),
+        status: _selectedStatus.toLowerCase(),
+        emiAvailable: _emiAvailable,
+        images: _property!.images, // Keeping existing images
+      );
 
-        if (user != null) {
-          final property = Property(
-            user: user,
-            title: _titleController.text,
-            description: _descriptionController.text,
-            price: double.tryParse(_priceController.text) ?? 0.0,
-            location: _locationController.text,
-            type: _selectedType.toLowerCase(),
-            status: _selectedStatus.toLowerCase(),
-            emiAvailable: _emiAvailable,
-            images: _images,
-          );
+      Property? success = await PropertyOwnerApi.updateProperty(
+          widget.propertyId, updatedProperty, imageFiles);
 
-          List<File> imageFiles = _images.map((path) => File(path)).toList();
-          Property? pp =
-              await PropertyOwnerApi.createProperty(property, imageFiles);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(pp != null
-                    ? "Property submitted successfully!"
-                    : "Failed to submit property.")),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("User not found. Please try again.")),
-          );
-        }
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Property updated successfully!",
+              style: TextStyle(color: Colors.green)),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_property == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Add Property"),
-      ),
+      appBar: AppBar(title: const Text("Edit Property")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -125,8 +141,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                   ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                    onPressed: _submitProperty,
-                    child: const Text("Submit Property")),
+                    onPressed: _updateProperty,
+                    child: const Text("Update Property")),
               ],
             ),
           ),
@@ -158,7 +174,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: options[0],
+          value: options.contains(_selectedType) ? _selectedType : options[0],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: options
               .map((option) =>
