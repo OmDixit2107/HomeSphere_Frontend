@@ -41,7 +41,6 @@ class PropertyOwnerApi {
     }
   }
 
-  // Update a property with images
   static Future<Property?> updateProperty(
       int id, Property updatedProperty, List<File> images) async {
     final url = Uri.parse('$baseUrl/$id');
@@ -69,14 +68,21 @@ class PropertyOwnerApi {
     }
 
     // Send the request
-    var response = await request.send();
+    try {
+      var response = await request.send();
 
-    if (response.statusCode == 200) {
-      // Convert response to a property object and return
-      var responseData = await response.stream.bytesToString();
-      return Property.fromJson(jsonDecode(responseData));
+      if (response.statusCode == 200) {
+        // Convert response to a property object and return
+        var responseData = await response.stream.bytesToString();
+        return Property.fromJson(jsonDecode(responseData));
+      } else {
+        print('Failed to update property. Status Code: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error updating property: $e');
+      return null;
     }
-    return null;
   }
 
   // Get all properties

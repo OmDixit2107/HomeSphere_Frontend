@@ -17,18 +17,102 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Signup/Login',
+      title: 'HomeSphere',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1E88E5),
+          primary: const Color(0xFF1E88E5),
+          secondary: const Color(0xFF4CAF50),
+          tertiary: const Color(0xFFFFA726),
+          background: Colors.grey[50],
+          surface: Colors.white,
+          error: const Color(0xFFE53935),
+        ),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Color(0xFF1E88E5),
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[100],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          selectedItemColor: Color(0xFF1E88E5),
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          elevation: 8,
+        ),
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1E88E5),
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1E88E5),
+          ),
+          titleLarge: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1E88E5),
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
       ),
-      initialRoute: '/auth-checker', // Use a custom route for dynamic checks
+      initialRoute: '/auth-checker',
       routes: {
         '/auth-checker': (context) => AuthChecker(),
         MyRoutes.loginScreen: (context) => const LoginScreen(),
         MyRoutes.signUp: (context) => const SignUp(),
         MyRoutes.propertyOwnerHome: (context) => const PropertyOwnerHome(),
         MyRoutes.userHome: (context) => const UserHome(),
-        // MyRoutes.editScreen:(context) => const EditProperty(propertyId: propertyId) // Corrected typo
       },
     );
   }

@@ -12,7 +12,7 @@ class UserHome extends StatefulWidget {
 }
 
 class _UserHomeState extends State<UserHome> {
-  bool isBuying = true; // Default to Buy property screen
+  bool isBuying = true;
 
   void toggleScreen() {
     setState(() {
@@ -25,66 +25,42 @@ class _UserHomeState extends State<UserHome> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("HomeSphere"),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.logout),
-        //     onPressed: () {
-        //       Authfunctions.logoutUser();
-        //       Navigator.pushNamedAndRemoveUntil(
-        //           context, MyRoutes.loginScreen, (route) => false);
-        //     },
-        //   ),
-        // ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await Authfunctions.logoutUser();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  MyRoutes.loginScreen,
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
-      body: isBuying
-          ? const BuyProperty() // Replace with actual Buy screen
-          : const RentProperty(), // Replace with actual Rent screen
-      bottomNavigationBar: SizedBox(
-        height: 60,
-        child: Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (!isBuying) {
-                    toggleScreen(); // Switch to Buy only if not already there
-                  }
-                },
-                child: Container(
-                  color: isBuying ? Colors.blue : Colors.grey,
-                  alignment: Alignment.center,
-                  child: const Text(
-                    "BUY",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (isBuying) {
-                    toggleScreen(); // Switch to Rent only if not already there
-                  }
-                },
-                child: Container(
-                  color: isBuying ? Colors.grey : Colors.green,
-                  alignment: Alignment.center,
-                  child: const Text(
-                    "RENT",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+      body: isBuying ? const BuyProperty() : const RentProperty(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: isBuying ? 0 : 1,
+        onDestinationSelected: (index) {
+          if ((index == 0 && !isBuying) || (index == 1 && isBuying)) {
+            toggleScreen();
+          }
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Buy Property',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.apartment_outlined),
+            selectedIcon: Icon(Icons.apartment),
+            label: 'Rent Property',
+          ),
+        ],
       ),
     );
   }

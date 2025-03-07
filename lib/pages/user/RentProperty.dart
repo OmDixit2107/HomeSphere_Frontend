@@ -15,11 +15,44 @@ class RentProperty extends StatefulWidget {
 
 class _RentPropertyState extends State<RentProperty> {
   late Future<List<Property>> _propertiesFuture;
+  final TextEditingController _searchController = TextEditingController();
+  List<Property> _filteredProperties = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
+    _loadProperties();
+  }
+
+  Future<void> _loadProperties() async {
     _propertiesFuture = PropertyOwnerApi.getPropertiesByType("rent");
+    setState(() {});
+  }
+
+  void _filterProperties(String query) {
+    setState(() {
+      _isSearching = query.isNotEmpty;
+    });
+    if (query.isEmpty) {
+      _loadProperties();
+      return;
+    }
+
+    _propertiesFuture.then((properties) {
+      setState(() {
+        _filteredProperties = properties.where((property) {
+          final description = property.description.toLowerCase();
+          final title = property.title.toLowerCase();
+          final location = property.location.toLowerCase();
+          final searchQuery = query.toLowerCase();
+
+          return description.contains(searchQuery) ||
+              title.contains(searchQuery) ||
+              location.contains(searchQuery);
+        }).toList();
+      });
+    });
   }
 
   @override
@@ -73,16 +106,28 @@ class _RentPropertyState extends State<RentProperty> {
                         ],
                       ),
                       child: TextField(
-                        decoration: const InputDecoration(
-                          hintText: "Search rental properties.",
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText:
+                              "Search rental properties by description...",
+                          prefixIcon:
+                              const Icon(Icons.search, color: Colors.grey),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10,
+                          ),
+                          suffixIcon: _isSearching
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _filterProperties('');
+                                  },
+                                )
+                              : null,
                         ),
-                        onChanged: (query) {
-                          // Implement search functionality
-                        },
+                        onChanged: _filterProperties,
                       ),
                     ),
                   ],
@@ -93,11 +138,16 @@ class _RentPropertyState extends State<RentProperty> {
               ImageSlider(images: consts.sliderRentImages),
               const SizedBox(height: 16),
               // Properties List Title
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  "Available Properties for Rent",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _isSearching
+                      ? "Search Results (${_filteredProperties.length})"
+                      : "Available Properties for Rent",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -108,13 +158,46 @@ class _RentPropertyState extends State<RentProperty> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return _buildShimmerLoading();
                   } else if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}"));
+                    return Center(
+                      child: Text(
+                        "Error: ${snapshot.error}",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    );
                   } else if (snapshot.data == null || snapshot.data!.isEmpty) {
                     return const Center(
-                        child: Text("No rental properties found."));
+                      child: Text("No rental properties found."),
+                    );
                   }
 
-                  List<Property> properties = snapshot.data!;
+                  final properties =
+                      _isSearching ? _filteredProperties : snapshot.data!;
+
+                  if (_isSearching && _filteredProperties.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No properties found matching your search",
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shrinkWrap: true,
@@ -184,5 +267,11 @@ class _RentPropertyState extends State<RentProperty> {
 
   Widget _buildShimmerLoading() {
     return const Center(child: CircularProgressIndicator());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }

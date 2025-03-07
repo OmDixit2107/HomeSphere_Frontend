@@ -3,189 +3,270 @@ import 'package:homesphere/services/functions/authFunctions.dart';
 import 'package:homesphere/utils/routes.dart';
 
 class SignUp extends StatefulWidget {
-  const SignUp({Key? key}) : super(key: key);
+  const SignUp({super.key});
 
   @override
   State<SignUp> createState() => _SignUpState();
 }
 
 class _SignUpState extends State<SignUp> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-
-  // Role selection
-  String? role; // Can be 'User' or 'Property Owner'
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  String _selectedRole = 'User';
+  bool _isLoading = false;
 
   void _handleSignUp() async {
-    final name = nameController.text;
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-    final phone = phoneController.text.trim();
-
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        phone.isEmpty ||
-        role == null) {
+    if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please fill in all fields and select a role')),
+          content: Text('Passwords do not match'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
-    final success =
-        await Authfunctions.signupUser(name, email, password, phone, role!);
+    setState(() => _isLoading = true);
+    try {
+      bool success = await Authfunctions.signupUser(
+        _nameController.text,
+        _emailController.text,
+        _passwordController.text,
+        _phoneController.text,
+        _selectedRole,
+      );
 
-    if (success) {
-      Navigator.pushNamed(context, MyRoutes.loginScreen);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign-up Done. Please now sign in.')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign-up failed. Please try again.')),
-      );
+      if (success) {
+        if (_selectedRole == 'User') {
+          Navigator.pushReplacementNamed(context, MyRoutes.userHome);
+        } else {
+          Navigator.pushReplacementNamed(context, MyRoutes.propertyOwnerHome);
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create account'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: SafeArea(
+    return Scaffold(
+      body: SafeArea(
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Image.asset(
-                'assets/images/signup.png',
-                fit: BoxFit.cover,
-                height: 300,
-                width: 350,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Create Account',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontFamily: 'Courier',
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
+                // Logo
+                Center(
+                  child: Image.asset(
+                    'assets/images/signup.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.person),
-                        hintText: 'Enter Your Full Name',
-                        labelText: 'Full Name',
+                const SizedBox(height: 32),
+                // Title
+                Text(
+                  'Create Account',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.email),
-                        hintText: 'Enter Your Email',
-                        labelText: 'Email',
+                ),
+                const SizedBox(height: 8),
+                // Subtitle
+                Text(
+                  'Join HomeSphere today',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.grey[600],
                       ),
+                ),
+                const SizedBox(height: 32),
+                // Name Field
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your name',
+                    prefixIcon: Icon(
+                      Icons.person_outline,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.lock),
-                        hintText: 'Enter Your Password',
-                        labelText: 'Password',
-                      ),
+                    labelText: 'Full Name',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Email Field
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.phone),
-                        hintText: 'Enter Your Phone Number',
-                        labelText: 'Phone Number',
-                      ),
+                    labelText: 'Email',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Phone Field
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your phone number',
+                    prefixIcon: Icon(
+                      Icons.phone_outlined,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    const SizedBox(height: 10),
-
-                    // Dropdown for Role Selection
-                    DropdownButtonFormField<String>(
-                      value: role,
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.account_circle),
-                        labelText: 'Select Role',
-                      ),
-                      items: ['User', 'Property Owner'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          role = newValue;
-                        });
-                      },
+                    labelText: 'Phone Number',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Password Field
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your password',
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    const SizedBox(height: 20),
-
-                    TextButton.icon(
-                      onPressed: _handleSignUp,
-                      icon: const Icon(Icons.create),
-                      label: Container(
-                        alignment: Alignment.center,
-                        width: 150,
-                        height: 35,
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                    labelText: 'Password',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Confirm Password Field
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Confirm your password',
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    labelText: 'Confirm Password',
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Role Selection
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedRole,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'User',
+                          child: Text('User'),
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Already have an account?'),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, MyRoutes.loginScreen);
-                          },
-                          child: const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        DropdownMenuItem(
+                          value: 'Property Owner',
+                          child: Text('Property Owner'),
                         ),
                       ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _selectedRole = value);
+                        }
+                      },
                     ),
-                    const Text(
-                      'By signing up you agree to our terms, conditions, and privacy policy.',
-                      style: TextStyle(fontSize: 13),
-                      textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Sign Up Button
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleSignUp,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Create Account',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Terms and Conditions
+                Text(
+                  'By signing up, you agree to our Terms of Service and Privacy Policy',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const SizedBox(height: 16),
+                // Sign In Link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Already have an account? ',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, MyRoutes.loginScreen);
+                      },
+                      child: Text(
+                        'Sign In',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
 }

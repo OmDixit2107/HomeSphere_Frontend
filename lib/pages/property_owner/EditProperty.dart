@@ -75,10 +75,10 @@ class _EditPropertyState extends State<EditProperty> {
         emiAvailable: _emiAvailable,
         images: _property!.images, // Keeping existing images
       );
-
+      print(updatedProperty.price);
       Property? success = await PropertyOwnerApi.updateProperty(
           widget.propertyId, updatedProperty, imageFiles);
-
+      print(success);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Property updated successfully!",

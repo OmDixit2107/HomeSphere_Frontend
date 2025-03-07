@@ -6,7 +6,7 @@ import 'package:homesphere/services/functions/authFunctions.dart';
 import 'package:homesphere/utils/routes.dart';
 
 class PropertyOwnerHome extends StatefulWidget {
-  const PropertyOwnerHome({Key? key}) : super(key: key);
+  const PropertyOwnerHome({super.key});
 
   @override
   State<PropertyOwnerHome> createState() => _PropertyOwnerHomeState();
@@ -27,25 +27,35 @@ class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
   Widget build(BuildContext context) {
     // Create the screens list
     List<Widget> _screens = <Widget>[
-      AddPropertyScreen(),
+      const AddPropertyScreen(),
       FutureBuilder<int?>(
         future: _fetchUserId(), // Fetch userId asynchronously
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
+            return Center(
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
           } else if (snapshot.hasData) {
             int? userId = snapshot.data;
             return ManageListingsScreen(
               userId: userId!, // Safely pass the userId
             );
           } else {
-            return const Center(child: Text("User ID not found"));
+            return Center(
+              child: Text(
+                "User ID not found",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
           }
         },
       ),
-      FinalizeSaleScreen(),
+      const FinalizeSaleScreen(),
     ];
 
     void _onItemTapped(int index) {
@@ -57,53 +67,75 @@ class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Property Owner Dashboard'),
-        backgroundColor: Colors.red,
         actions: [
           IconButton(
-            onPressed: () {
-              Authfunctions.logoutUser();
-              Navigator.pushReplacementNamed(
-                context,
-                MyRoutes.loginScreen,
-              );
+            onPressed: () async {
+              await Authfunctions.logoutUser();
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, MyRoutes.loginScreen);
+              }
             },
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: Center(
-        child: _screens.elementAt(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
+      body: _screens.elementAt(_selectedIndex),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.add_box_outlined),
+            selectedIcon: Icon(Icons.add_box),
             label: 'Add Property',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
+          NavigationDestination(
+            icon: Icon(Icons.list_alt_outlined),
+            selectedIcon: Icon(Icons.list_alt),
             label: 'Manage Listings',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.done),
+          NavigationDestination(
+            icon: Icon(Icons.check_circle_outline),
+            selectedIcon: Icon(Icons.check_circle),
             label: 'Finalize Sale',
           ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.red,
-        onTap: _onItemTapped,
       ),
     );
   }
 }
 
 class FinalizeSaleScreen extends StatelessWidget {
-  const FinalizeSaleScreen({Key? key}) : super(key: key);
+  const FinalizeSaleScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text("Finalize Sale Screen"),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Coming Soon',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This feature is under development',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

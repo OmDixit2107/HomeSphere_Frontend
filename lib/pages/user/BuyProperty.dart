@@ -15,11 +15,44 @@ class BuyProperty extends StatefulWidget {
 
 class _BuyPropertyState extends State<BuyProperty> {
   late Future<List<Property>> _propertiesFuture;
+  final TextEditingController _searchController = TextEditingController();
+  List<Property> _filteredProperties = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
+    _loadProperties();
+  }
+
+  Future<void> _loadProperties() async {
     _propertiesFuture = PropertyOwnerApi.getPropertiesByType("buy");
+    setState(() {});
+  }
+
+  void _filterProperties(String query) {
+    setState(() {
+      _isSearching = query.isNotEmpty;
+    });
+    if (query.isEmpty) {
+      _loadProperties();
+      return;
+    }
+
+    _propertiesFuture.then((properties) {
+      setState(() {
+        _filteredProperties = properties.where((property) {
+          final description = property.description.toLowerCase();
+          final title = property.title.toLowerCase();
+          final location = property.location.toLowerCase();
+          final searchQuery = query.toLowerCase();
+
+          return description.contains(searchQuery) ||
+              title.contains(searchQuery) ||
+              location.contains(searchQuery);
+        }).toList();
+      });
+    });
   }
 
   @override
@@ -30,34 +63,21 @@ class _BuyPropertyState extends State<BuyProperty> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // AppBar Section
+              // Gradient Header
               Container(
                 width: double.infinity,
                 padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                    const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.blue, Colors.indigo],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  // borderRadius: BorderRadius.only(
-                  //   bottomLeft: Radius.circular(20),
-                  //   bottomRight: Radius.circular(20),
-                  // ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // const SizedBox(height: 20),
-                    // const Text(
-                    //   "Buy Property",
-                    //   style: TextStyle(
-                    //     fontSize: 22,
-                    //     fontWeight: FontWeight.bold,
-                    //     color: Colors.white,
-                    //   ),
-                    // ),
                     const SizedBox(height: 10),
                     // Search Bar
                     Container(
@@ -73,35 +93,48 @@ class _BuyPropertyState extends State<BuyProperty> {
                         ],
                       ),
                       child: TextField(
-                        decoration: const InputDecoration(
-                          hintText: "Search properties To Buy...",
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: "Search properties by description...",
+                          prefixIcon:
+                              const Icon(Icons.search, color: Colors.grey),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10,
+                          ),
+                          suffixIcon: _isSearching
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _filterProperties('');
+                                  },
+                                )
+                              : null,
                         ),
-                        onChanged: (query) {
-                          // Implement search functionality
-                        },
+                        onChanged: _filterProperties,
                       ),
                     ),
-                    // const SizedBox(height: 16),
                   ],
                 ),
               ),
 
-              // Updated Image Slider
-
+              // Image Slider
               ImageSlider(images: consts.sliderBuyImages),
-
               const SizedBox(height: 16),
 
               // Properties List Title
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  "Available Properties",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _isSearching
+                      ? "Search Results (${_filteredProperties.length})"
+                      : "Available Properties",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -113,17 +146,50 @@ class _BuyPropertyState extends State<BuyProperty> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return _buildShimmerLoading();
                   } else if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}"));
+                    return Center(
+                      child: Text(
+                        "Error: ${snapshot.error}",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    );
                   } else if (snapshot.data == null || snapshot.data!.isEmpty) {
-                    return const Center(child: Text("No properties found."));
+                    return const Center(
+                      child: Text("No properties found."),
+                    );
                   }
 
-                  List<Property> properties = snapshot.data!;
+                  final properties =
+                      _isSearching ? _filteredProperties : snapshot.data!;
+
+                  if (_isSearching && _filteredProperties.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No properties found matching your search",
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shrinkWrap: true,
-                    physics:
-                        const NeverScrollableScrollPhysics(), // Prevent nested scrolling
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: properties.length,
                     itemBuilder: (context, index) {
                       return _buildPropertyCard(properties[index]);
@@ -138,7 +204,6 @@ class _BuyPropertyState extends State<BuyProperty> {
     );
   }
 
-  // Property Card UI
   Widget _buildPropertyCard(Property property) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -188,43 +253,13 @@ class _BuyPropertyState extends State<BuyProperty> {
     );
   }
 
-  // Shimmer Loading Effect
   Widget _buildShimmerLoading() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            leading: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            title: Container(
-              width: 100,
-              height: 10,
-              color: Colors.grey[300],
-            ),
-            subtitle: Container(
-              width: 150,
-              height: 10,
-              color: Colors.grey[300],
-            ),
-          ),
-        );
-      },
-    );
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }
