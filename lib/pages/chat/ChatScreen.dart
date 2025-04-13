@@ -38,32 +38,58 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void initState() {
+    print('🔄 ChatScreen - initState');
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🔄 ChatScreen - Post frame callback');
       _initializeChat();
     });
   }
 
   Future<void> _initializeChat() async {
-    if (!mounted) return;
+    print('📱 ChatScreen - Starting initialization');
+    print('👤 Current user ID: ${widget.currentUserId}');
+    print('👥 Other user ID: ${widget.otherUserId}');
+
+    if (!mounted) {
+      print('❌ ChatScreen - Widget not mounted during initialization');
+      return;
+    }
 
     try {
+      print('🔍 Loading current user details...');
       _currentUser = await UserApi.getUserById(widget.currentUserId);
+      print(
+          '👤 Current user loaded: ${_currentUser?.name} (ID: ${_currentUser?.id})');
+
+      print('🔍 Loading other user details...');
       _otherUser = await UserApi.getUserById(widget.otherUserId);
+      print(
+          '👥 Other user loaded: ${_otherUser?.name} (ID: ${_otherUser?.id})');
 
       if (_currentUser == null || _otherUser == null) {
         throw Exception('Failed to load user details');
       }
 
+      print('🔄 Initializing chat provider...');
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       await chatProvider.initialize(widget.currentUserId);
+      print('✅ Chat provider initialized');
+
+      print('📥 Loading chat messages...');
       await chatProvider.loadUserChat(widget.currentUserId, widget.otherUserId);
+      print('✅ Chat messages loaded');
 
       if (mounted) {
-        setState(() => _isInitialized = true);
+        setState(() {
+          _isInitialized = true;
+          print('✅ Chat screen initialized');
+        });
         _scrollToBottom();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error in _initializeChat: $e');
+      print('📚 Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -76,8 +102,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() {
     final text = _messageController.text.trim();
-    if (text.isEmpty || _currentUser == null || _otherUser == null) return;
+    print('📤 Attempting to send message: $text');
 
+    if (text.isEmpty) {
+      print('⚠️ Message text is empty');
+      return;
+    }
+    if (_currentUser == null) {
+      print('❌ Current user is null');
+      return;
+    }
+    if (_otherUser == null) {
+      print('❌ Other user is null');
+      return;
+    }
+
+    print('📤 Creating message object...');
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final message = ChatMessage(
       content: text,
@@ -86,8 +126,11 @@ class _ChatScreenState extends State<ChatScreen> {
       type: MessageType.CHAT,
       timestamp: DateTime.now(),
     );
+    print('📤 Sending message to: ${_otherUser!.name} (ID: ${_otherUser!.id})');
 
     chatProvider.sendMessage(message);
+    print('✅ Message sent to provider');
+
     _messageController.clear();
     _scrollToBottom();
   }
@@ -175,12 +218,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageList() {
+    print('🔄 Building message list');
     return Consumer<ChatProvider>(
       builder: (context, chatProvider, child) {
         final messages = chatProvider.getMessagesForConversation(
           widget.currentUserId,
           widget.otherUserId,
         );
+        print('📊 Total messages: ${messages.length}');
 
         return ListView.builder(
           controller: _scrollController,
@@ -188,14 +233,34 @@ class _ChatScreenState extends State<ChatScreen> {
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final message = messages[index];
-            // Fix the isMe logic to correctly identify message sender
             final isMe = message.sender.id == widget.currentUserId;
 
+            print(
+                '💬 Message ${index + 1}/${messages.length}: ${message.content}');
+            print(
+                '👤 Sender ID: ${message.sender.id}, Current User ID: ${widget.currentUserId}');
+            print('📍 Alignment: ${isMe ? 'Right' : 'Left'}');
+
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: _MessageBubble(
-                message: message,
-                isMe: isMe,
+              padding: EdgeInsets.only(
+                left: isMe ? 64.0 : 8.0,
+                right: isMe ? 8.0 : 64.0,
+                bottom: 8.0,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  _MessageBubble(
+                    message: message,
+                    isMe: isMe,
+                  ),
+                  if (index < messages.length - 1 &&
+                      messages[index + 1].sender.id != message.sender.id)
+                    const SizedBox(
+                        height:
+                            12), // Add extra space between different senders
+                ],
               ),
             );
           },
@@ -241,6 +306,14 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showPropertyDetails() {
     // Implement the logic to show property details
   }
+
+  @override
+  void dispose() {
+    print('🔄 ChatScreen - dispose');
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 }
 
 // Update the _MessageBubble widget
@@ -255,46 +328,41 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      // Align messages based on sender
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          left: isMe ? 64.0 : 0.0,
-          right: isMe ? 0.0 : 64.0,
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.75,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isMe ? Colors.blue[600] : Colors.grey[300],
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(16),
+          topRight: const Radius.circular(16),
+          bottomLeft: Radius.circular(isMe ? 16 : 4),
+          bottomRight: Radius.circular(isMe ? 4 : 16),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isMe ? Colors.blue[600] : Colors.grey[300],
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMe ? 12 : 0),
-            bottomRight: Radius.circular(isMe ? 0 : 12),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message.content ?? '',
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message.content ?? '',
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black87,
-                fontSize: 16,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            DateFormat('HH:mm').format(message.timestamp),
+            style: TextStyle(
+              fontSize: 12,
+              color: isMe ? Colors.white70 : Colors.black54,
             ),
-            const SizedBox(height: 2),
-            Text(
-              DateFormat('HH:mm').format(message.timestamp),
-              style: TextStyle(
-                fontSize: 12,
-                color: isMe ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

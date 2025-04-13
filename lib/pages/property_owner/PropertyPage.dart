@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
+import 'dart:math' show pow;
 
 class PropertyPage extends StatelessWidget {
   final Property property;
@@ -111,6 +113,131 @@ ${property.description}
         ),
       );
     }
+  }
+
+  void _showEmiCalculator(BuildContext context) {
+    int tenure = 12; // Default 1 year
+    double interestRate = 8.0; // Default 8%
+    double loanAmount = property.price;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          // Calculate EMI
+          double p = loanAmount;
+          double r = interestRate / 12 / 100; // Monthly interest rate
+          double n = tenure.toDouble(); // Total number of months
+
+          // EMI = P * r * (1 + r)^n / ((1 + r)^n - 1)
+          double emi = p * r * pow((1 + r), n) / (pow((1 + r), n) - 1);
+          double totalAmount = emi * tenure;
+          double totalInterest = totalAmount - loanAmount;
+
+          return AlertDialog(
+            title: const Text('EMI Calculator'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Property Price: ₹${loanAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  // Tenure Slider
+                  Text('Loan Tenure (months): $tenure'),
+                  Slider(
+                    value: tenure.toDouble(),
+                    min: 12,
+                    max: 360,
+                    divisions: 29,
+                    label: tenure.toString(),
+                    onChanged: (value) {
+                      setState(() => tenure = value.round());
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  // Interest Rate Slider
+                  Text('Interest Rate: ${interestRate.toStringAsFixed(1)}%'),
+                  Slider(
+                    value: interestRate,
+                    min: 5,
+                    max: 20,
+                    divisions: 30,
+                    label: interestRate.toStringAsFixed(1),
+                    onChanged: (value) {
+                      setState(() => interestRate = value);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  // Results
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Monthly EMI:'),
+                            Text(
+                              '₹${emi.toStringAsFixed(2)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Total Interest:'),
+                            Text(
+                              '₹${totalInterest.toStringAsFixed(2)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Total Amount:'),
+                            Text(
+                              '₹${totalAmount.toStringAsFixed(2)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _openPaymentScreen(context);
+                },
+                child: const Text('Proceed to Buy'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -260,10 +387,13 @@ ${property.description}
                         Icons.check_circle,
                       ),
                       if (property.emiAvailable)
-                        _buildPropertyTag(
-                          "EMI Available",
-                          Colors.purple.shade100,
-                          Icons.account_balance_wallet,
+                        GestureDetector(
+                          onTap: () => _showEmiCalculator(context),
+                          child: _buildPropertyTag(
+                            "Calculate EMI",
+                            Colors.purple.shade100,
+                            Icons.calculate,
+                          ),
                         ),
                     ],
                   ),

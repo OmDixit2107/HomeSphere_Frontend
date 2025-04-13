@@ -9,7 +9,6 @@ class ChatMessage {
   final User recipient;
   final MessageType type;
   final DateTime timestamp;
-  final bool isRead;
 
   ChatMessage({
     this.id,
@@ -18,41 +17,41 @@ class ChatMessage {
     required this.recipient,
     required this.type,
     required this.timestamp,
-    this.isRead = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    // Handle both direct IDs and nested objects
+    int senderId = json['senderId'] ?? json['sender']?['id'];
+    int recipientId = json['recipientId'] ?? json['recipient']?['id'];
+
+    final sender = User(
+      id: senderId,
+      name: json['sender']?['name'] ?? '',
+      email: json['sender']?['email'] ?? '',
+      password: json['sender']?['password'] ?? '',
+      contact_No: json['sender']?['contact_No'] ?? '',
+      role: json['sender']?['role'] ?? '',
+    );
+
+    final recipient = User(
+      id: recipientId,
+      name: json['recipient']?['name'] ?? '',
+      email: json['recipient']?['email'] ?? '',
+      password: json['recipient']?['password'] ?? '',
+      contact_No: json['recipient']?['contact_No'] ?? '',
+      role: json['recipient']?['role'] ?? '',
+    );
+
     return ChatMessage(
-      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
-      content: json['content'] as String?,
-      sender: json['sender'] is Map
-          ? User.fromJson(json['sender'])
-          : User(
-              id: int.tryParse(json['sender']?.toString() ?? '0') ?? 0,
-              email: '',
-              name: '',
-              password: '',
-              contact_No: null,
-              role: '',
-            ),
-      recipient: json['recipient'] is Map
-          ? User.fromJson(json['recipient'])
-          : User(
-              id: int.tryParse(json['recipient']?.toString() ?? '0') ?? 0,
-              email: '',
-              name: '',
-              password: '',
-              contact_No: null,
-              role: '',
-            ),
+      id: json['id'],
+      content: json['content'],
+      sender: sender,
+      recipient: recipient,
       type: MessageType.values.firstWhere(
-        (e) => e.toString().split('.').last == json['type'],
+        (e) => e.toString() == 'MessageType.${json['type']}',
         orElse: () => MessageType.CHAT,
       ),
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp']) ?? DateTime.now()
-          : DateTime.now(),
-      isRead: json['isRead'] ?? false,
+      timestamp: DateTime.parse(json['timestamp']),
     );
   }
 
@@ -64,7 +63,6 @@ class ChatMessage {
       'recipient': recipient.toJson(),
       'type': type.toString().split('.').last,
       'timestamp': timestamp.toIso8601String(),
-      'isRead': isRead,
     };
   }
 

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:homesphere/models/User.dart';
 import 'package:homesphere/providers/ChatProvider.dart';
@@ -35,57 +38,40 @@ class _PropertyOwnerChatListState extends State<PropertyOwnerChatList> {
     });
 
     try {
-      // Get the chat provider
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      await chatProvider.initialize(widget.ownerId);
+      print('📱 Loading chat users for owner ID: ${widget.ownerId}');
 
-      // Hardcoded users for testing
-      final List<User> users = [
-        User(
-            id: 1,
-            name: 'John Doe',
-            email: 'john@example.com',
-            password: '',
-            role: 'User',
-            contact_No: '1234567890'),
-        User(
-            id: 2,
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            password: '',
-            role: 'User',
-            contact_No: '2345678901'),
-        User(
-            id: 3,
-            name: 'Mike Johnson',
-            email: 'mike@example.com',
-            password: '',
-            role: 'User',
-            contact_No: '3456789012'),
-        User(
-            id: 4,
-            name: 'Sarah Williams',
-            email: 'sarah@example.com',
-            password: '',
-            role: 'User',
-            contact_No: '4567890123'),
-        User(
-            id: 5,
-            name: 'Alex Brown',
-            email: 'alex@example.com',
-            password: '',
-            role: 'User',
-            contact_No: '5678901234'),
-      ];
+      // Update URL to use 10.0.2.2 instead of localhost for Android emulator
+      final url = Uri.parse(
+          'http://10.0.2.2:8090/api/properties/users?ownerId=${widget.ownerId}');
+      print('🌐 Making request to: $url');
 
-      if (mounted) {
-        setState(() {
-          _chatUsers = users;
-          _isLoading = false;
-        });
+      final response = await http.get(url);
+      print('📡 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final users = data.map((json) {
+          final user = User.fromJson(json);
+          print('👤 Loaded user: ${user.name} (ID: ${user.id})');
+          return user;
+        }).toList();
+
+        print('👥 Total users loaded: ${users.length}');
+
+        if (mounted) {
+          setState(() {
+            _chatUsers = users;
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to load chat users: ${response.body}');
       }
-    } catch (e) {
-      print('Error loading chat users: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error loading chat users: $e');
+      print('📚 Stack trace: $stackTrace');
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -94,6 +80,12 @@ class _PropertyOwnerChatListState extends State<PropertyOwnerChatList> {
           SnackBar(
             content: Text('Error loading users: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadChatUsers,
+              textColor: Colors.white,
+            ),
           ),
         );
       }
