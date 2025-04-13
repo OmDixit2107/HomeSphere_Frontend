@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:homesphere/pages/property_owner/AddPropertyScreen.dart';
 import 'package:homesphere/pages/property_owner/ManageListingsScreen.dart';
+import 'package:homesphere/pages/property_owner/PropertyOwnerChatList.dart';
 import 'package:homesphere/services/api/UserAPI.dart';
 import 'package:homesphere/services/functions/authFunctions.dart';
 import 'package:homesphere/utils/routes.dart';
@@ -55,7 +56,34 @@ class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
           }
         },
       ),
-      const FinalizeSaleScreen(),
+      FutureBuilder<int?>(
+        future: _fetchUserId(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
+          } else if (snapshot.hasData) {
+            int? userId = snapshot.data;
+            return PropertyOwnerChatList(
+              ownerId: userId!,
+            );
+          } else {
+            return Center(
+              child: Text(
+                "User ID not found",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            );
+          }
+        },
+      ),
+      // const FinalizeSaleScreen(),
     ];
 
     void _onItemTapped(int index) {
@@ -95,45 +123,15 @@ class _PropertyOwnerHomeState extends State<PropertyOwnerHome> {
             label: 'Manage Listings',
           ),
           NavigationDestination(
-            icon: Icon(Icons.check_circle_outline),
-            selectedIcon: Icon(Icons.check_circle),
-            label: 'Finalize Sale',
+            icon: Icon(Icons.chat_outlined),
+            selectedIcon: Icon(Icons.chat),
+            label: 'Messages',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class FinalizeSaleScreen extends StatelessWidget {
-  const FinalizeSaleScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.construction,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Coming Soon',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'This feature is under development',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
+          // NavigationDestination(
+          //   icon: Icon(Icons.check_circle_outline),
+          //   selectedIcon: Icon(Icons.check_circle),
+          //   label: 'Finalize Sale',
+          // ),
         ],
       ),
     );

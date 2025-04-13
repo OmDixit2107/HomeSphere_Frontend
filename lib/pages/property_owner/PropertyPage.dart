@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:homesphere/models/Property.dart';
 import 'package:homesphere/pages/chat/ChatScreen.dart';
+import 'package:homesphere/pages/user/PaymentScreen.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
 import 'package:homesphere/services/api/UserAPI.dart';
 import 'package:http/http.dart' as http;
@@ -35,20 +36,21 @@ ${property.description}
 
   void _openChat(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    String? email =
-        prefs.getString('email'); // Retrieve email from shared preferences
+    String? email = prefs.getString('email');
 
     if (email != null) {
       int? currentUserId = await UserApi.getUserIdByEmail(email);
 
-      if (currentUserId != null && property.id != null) {
+      if (currentUserId != null && property.user.id != null) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
               property: property,
-              currentUserId: currentUserId.toString(),
-              propertyOwnerId: property.id.toString(),
+              currentUserId: currentUserId,
+              otherUserId: property
+                  .user.id!, // Use the property owner's ID from the property
+              isPropertyOwner: false, // Current user is not the property owner
             ),
           ),
         );
@@ -60,6 +62,53 @@ ${property.description}
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not logged in')),
+      );
+    }
+  }
+
+  Future<void> _openPaymentScreen(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('email');
+
+    if (email != null) {
+      int? currentUserId = await UserApi.getUserIdByEmail(email);
+
+      if (currentUserId != null) {
+        // Get the current user using getUserById
+        final currentUser = await UserApi.getUserById(currentUserId);
+
+        if (currentUser != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaymentScreen(
+                property: property,
+                currentUser: currentUser,
+              ),
+            ),
+          ).then((success) {
+            if (success == true) {
+              // Handle successful payment
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Payment successful!')),
+              );
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to load user information'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to proceed'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -283,6 +332,17 @@ ${property.description}
                     foregroundColor: Colors.white,
                   ),
                 ),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton(
+                onPressed: () => _openPaymentScreen(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('Buy Now'),
               ),
             ],
           ),

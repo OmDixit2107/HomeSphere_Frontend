@@ -1,20 +1,29 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:homesphere/models/ChatMessage.dart';
 import 'package:homesphere/models/Property.dart';
+import 'package:homesphere/models/User.dart';
 import 'package:homesphere/services/websocket/ChatWebSocket.dart';
+import 'package:homesphere/services/api/UserApi.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:homesphere/providers/ChatProvider.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Property property;
-  final String currentUserId;
-  final String propertyOwnerId;
+  final Property? property; // Make property nullable
+  final int currentUserId;
+  final int otherUserId;
+  final bool isPropertyOwner;
 
   const ChatScreen({
-    super.key,
-    required this.property,
+    Key? key,
+    this.property, // Remove required
     required this.currentUserId,
-    required this.propertyOwnerId,
-  });
+    required this.otherUserId,
+    required this.isPropertyOwner,
+  }) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -23,48 +32,200 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-  bool _isLoading = false;
-  late final ChatWebSocket _chatWebSocket;
+  bool _isInitialized = false;
+  User? _currentUser;
+  User? _otherUser;
 
   @override
   void initState() {
     super.initState();
-    _initializeChat();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeChat();
+    });
   }
 
   Future<void> _initializeChat() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
 
-    // Initialize WebSocket connection
-    _chatWebSocket = ChatWebSocket.getInstance();
-    _chatWebSocket.connect(widget.currentUserId);
-
-    // Listen for new messages
-    _chatWebSocket.messageStream.listen((message) {
-      setState(() {
-        _messages.add(message);
-      });
-      _scrollToBottom();
-    });
-
-    // Load previous messages
     try {
-      final previousMessages = await _loadPreviousMessages();
-      setState(() {
-        _messages.addAll(previousMessages);
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      _currentUser = await UserApi.getUserById(widget.currentUserId);
+      _otherUser = await UserApi.getUserById(widget.otherUserId);
+
+      if (_currentUser == null || _otherUser == null) {
+        throw Exception('Failed to load user details');
+      }
+
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.initialize(widget.currentUserId);
+      await chatProvider.loadUserChat(widget.currentUserId, widget.otherUserId);
+
+      if (mounted) {
+        setState(() => _isInitialized = true);
+        _scrollToBottom();
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError('Failed to load previous messages');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error loading chat: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  Future<List<ChatMessage>> _loadPreviousMessages() async {
-    // Implement loading previous messages from your API
-    return [];
+  void _sendMessage() {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _currentUser == null || _otherUser == null) return;
+
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final message = ChatMessage(
+      content: text,
+      sender: _currentUser!, // Current user is the sender
+      recipient: _otherUser!, // Other user is the recipient
+      type: MessageType.CHAT,
+      timestamp: DateTime.now(),
+    );
+
+    chatProvider.sendMessage(message);
+    _messageController.clear();
+    _scrollToBottom();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _otherUser?.name ?? 'Chat',
+              style: const TextStyle(fontSize: 16),
+            ),
+            if (widget.property !=
+                null) // Only show property title if available
+              Text(
+                'About ${widget.property!.title}',
+                style: const TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
+        actions: [
+          if (widget.property !=
+              null) // Only show property info button if available
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: _showPropertyDetails,
+            ),
+        ],
+      ),
+      body: !_isInitialized
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (widget.property != null) _buildPropertyBanner(),
+                Expanded(
+                  child: _buildMessageList(),
+                ),
+                _buildMessageInput(),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildPropertyBanner() {
+    if (widget.property == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      color: Colors.grey[200],
+      child: Row(
+        children: [
+          Image.network(
+            widget.property!.mainImage,
+            width: 50,
+            height: 50,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 50,
+                height: 50,
+                color: Colors.grey[300],
+                child: const Icon(Icons.error),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.property!.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(widget.property!.location),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    return Consumer<ChatProvider>(
+      builder: (context, chatProvider, child) {
+        final messages = chatProvider.getMessagesForConversation(
+          widget.currentUserId,
+          widget.otherUserId,
+        );
+
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(16),
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final message = messages[index];
+            // Fix the isMe logic to correctly identify message sender
+            final isMe = message.sender.id == widget.currentUserId;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: _MessageBubble(
+                message: message,
+                isMe: isMe,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(
+                hintText: 'Type a message...',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: _sendMessage,
+          ),
+        ],
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -77,191 +238,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
-
-    final message = ChatMessage(
-      content: _messageController.text.trim(),
-      sender: widget.currentUserId,
-      recipient: widget.propertyOwnerId,
-      type: MessageType.CHAT,
-      timestamp: DateTime.now(),
-    );
-
-    try {
-      _chatWebSocket.sendMessage(message);
-      _messageController.clear();
-      _scrollToBottom(); // Ensure new message is visible
-    } catch (e) {
-      _showError('Failed to send message');
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.property.title),
-            Text(
-              widget.property.location,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          // Property Summary Card
-          Card(
-            margin: const EdgeInsets.all(8),
-            child: ListTile(
-              leading: FutureBuilder(
-                future: null, // Add property image loading here
-                builder: (context, snapshot) {
-                  return const Icon(Icons.home);
-                },
-              ),
-              title: Text(
-                "₹${widget.property.price.toStringAsFixed(2)}",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                widget.property.type == "rent" ? "per month" : "buy",
-              ),
-            ),
-          ),
-
-          // Messages List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final message = _messages[index];
-                      final isMe = message.sender == widget.currentUserId;
-                      final showTimestamp = index == 0 ||
-                          _shouldShowTimestamp(
-                            _messages[index],
-                            _messages[index - 1],
-                          );
-
-                      return Column(
-                        children: [
-                          if (showTimestamp)
-                            _buildTimestampDivider(message.timestamp),
-                          _MessageBubble(
-                            message: message,
-                            isMe: isMe,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-          ),
-
-          // Message Input
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FloatingActionButton(
-                  onPressed: _sendMessage,
-                  child: const Icon(Icons.send),
-                  mini: true,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _shouldShowTimestamp(ChatMessage current, ChatMessage previous) {
-    return current.timestamp.difference(previous.timestamp).inMinutes >= 5;
-  }
-
-  Widget _buildTimestampDivider(DateTime timestamp) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Text(
-        _formatMessageDate(timestamp),
-        style: const TextStyle(
-          color: Colors.grey,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-
-  String _formatMessageDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(date.year, date.month, date.day);
-
-    if (messageDate == today) {
-      return "Today ${DateFormat('HH:mm').format(date)}";
-    } else if (messageDate == yesterday) {
-      return "Yesterday ${DateFormat('HH:mm').format(date)}";
-    } else {
-      return DateFormat('MMM d, HH:mm').format(date);
-    }
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  void _showPropertyDetails() {
+    // Implement the logic to show property details
   }
 }
 
+// Update the _MessageBubble widget
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
@@ -274,45 +256,36 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
+      // Align messages based on sender
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
+        margin: EdgeInsets.only(
+          left: isMe ? 64.0 : 0.0,
+          right: isMe ? 0.0 : 64.0,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isMe ? Theme.of(context).primaryColor : Colors.grey[300],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
+          color: isMe ? Colors.blue[600] : Colors.grey[300],
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isMe ? 12 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 12),
+          ),
         ),
         child: Column(
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (message.type == MessageType.JOIN)
-              Text(
-                "${message.sender} joined the chat",
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black,
-                  fontStyle: FontStyle.italic,
-                ),
-              )
-            else if (message.type == MessageType.LEAVE)
-              Text(
-                "${message.sender} left the chat",
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black,
-                  fontStyle: FontStyle.italic,
-                ),
-              )
-            else
-              Text(
-                message.content ?? "",
-                style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black,
-                ),
+            Text(
+              message.content ?? '',
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black87,
+                fontSize: 16,
               ),
-            const SizedBox(height: 4),
+            ),
+            const SizedBox(height: 2),
             Text(
               DateFormat('HH:mm').format(message.timestamp),
               style: TextStyle(

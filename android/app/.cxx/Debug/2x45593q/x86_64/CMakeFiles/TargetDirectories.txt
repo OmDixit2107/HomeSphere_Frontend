@@ -1,0 +1,2 @@
+C:/Users/omdix/Desktop/Development/Flutter/homesphere/android/app/.cxx/Debug/2x45593q/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/omdix/Desktop/Development/Flutter/homesphere/android/app/.cxx/Debug/2x45593q/x86_64/CMakeFiles/rebuild_cache.dir

@@ -10,7 +10,7 @@ class Property {
   final String type;
   final String status;
   final bool emiAvailable;
-  final List<String> images; // List to store image URLs
+  final List<String> images;
 
   Property({
     this.id,
@@ -22,7 +22,7 @@ class Property {
     required this.type,
     required this.status,
     required this.emiAvailable,
-    required this.images, // Add images here
+    required this.images,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -31,17 +31,20 @@ class Property {
       user: User.fromJson(json['user']),
       title: json['title'],
       description: json['description'],
-      price: json['price'].toDouble(),
+      price: (json['price'] is int)
+          ? json['price'].toDouble()
+          : json['price'].toDouble(),
       location: json['location'],
       type: json['type'],
       status: json['status'],
       emiAvailable: json['emiAvailable'],
-      images: List<String>.from(json['images'] ?? []), // Parse images from JSON
+      images: List<String>.from(json['images'] ?? []),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'user': user.toJson(),
       'title': title,
       'description': description,
@@ -50,6 +53,12 @@ class Property {
       'type': type,
       'status': status,
       'emiAvailable': emiAvailable,
+      'images': images,
     };
+  }
+
+  // Helper method to get the first image or a default one
+  String get mainImage {
+    return images.isNotEmpty ? images[0] : 'assets/images/default_property.png';
   }
 }

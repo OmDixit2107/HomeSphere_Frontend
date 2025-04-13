@@ -2,13 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:homesphere/pages/property_owner/EditProperty.dart';
 import 'package:homesphere/pages/property_owner/PropertyOwnerHome.dart';
 import 'package:homesphere/pages/user/UserHome.dart';
+import 'package:homesphere/providers/ChatProvider.dart';
+import 'package:homesphere/providers/PropertyProvider.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth/login.dart';
 import 'auth/signup.dart';
 import 'utils/routes.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => PropertyProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -136,7 +147,12 @@ class AuthChecker extends StatelessWidget {
           final role = snapshot.data!;
           print("this is inside login page\n");
           print(role);
-          print(role);
+
+          // Initialize providers if the user is logged in
+          if (role.isNotEmpty) {
+            _initializeProviders(context);
+          }
+
           if (role == 'User') {
             return const UserHome(); // Navigate to User Home screen
           } else if (role == 'Property Owner') {
@@ -147,6 +163,23 @@ class AuthChecker extends StatelessWidget {
         return const LoginScreen(); // If no role or no data, show the login screen
       },
     );
+  }
+
+  Future<void> _initializeProviders(BuildContext context) async {
+    try {
+      // Get user ID
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId != null) {
+        // Initialize ChatProvider
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+        await chatProvider.initialize(userId);
+        print('Initialized ChatProvider for user ID: $userId');
+      }
+    } catch (e) {
+      print('Error initializing providers: $e');
+    }
   }
 }
 

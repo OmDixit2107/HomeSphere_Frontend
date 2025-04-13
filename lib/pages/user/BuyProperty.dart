@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:homesphere/models/Property.dart';
+import 'package:homesphere/providers/PropertyProvider.dart';
 import 'package:homesphere/pages/property_owner/PropertyPage.dart';
 import 'package:homesphere/services/api/PropertyOwnerAPI.dart';
 import 'package:homesphere/services/functions/ImageSlider.dart';
@@ -14,191 +16,212 @@ class BuyProperty extends StatefulWidget {
 }
 
 class _BuyPropertyState extends State<BuyProperty> {
-  late Future<List<Property>> _propertiesFuture;
   final TextEditingController _searchController = TextEditingController();
-  List<Property> _filteredProperties = [];
-  bool _isSearching = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProperties();
-  }
-
-  Future<void> _loadProperties() async {
-    _propertiesFuture = PropertyOwnerApi.getPropertiesByType("buy");
-    setState(() {});
-  }
-
-  void _filterProperties(String query) {
-    setState(() {
-      _isSearching = query.isNotEmpty;
+    // Use post-frame callback to avoid calling provider during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
     });
-    if (query.isEmpty) {
-      _loadProperties();
-      return;
-    }
+  }
 
-    _propertiesFuture.then((properties) {
+  Future<void> _initializeData() async {
+    if (!mounted) return;
+
+    final propertyProvider =
+        Provider.of<PropertyProvider>(context, listen: false);
+    await propertyProvider.loadProperties();
+
+    if (mounted) {
       setState(() {
-        _filteredProperties = properties.where((property) {
-          final description = property.description.toLowerCase();
-          final title = property.title.toLowerCase();
-          final location = property.location.toLowerCase();
-          final searchQuery = query.toLowerCase();
-
-          return description.contains(searchQuery) ||
-              title.contains(searchQuery) ||
-              location.contains(searchQuery);
-        }).toList();
+        _isInitialized = true;
       });
-    });
+    }
+  }
+
+  void _handleSearch(String query) {
+    final propertyProvider =
+        Provider.of<PropertyProvider>(context, listen: false);
+    propertyProvider.searchProperties(query);
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    final propertyProvider =
+        Provider.of<PropertyProvider>(context, listen: false);
+    propertyProvider.clearSearch();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Gradient Header
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue, Colors.indigo],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gradient Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue, Colors.indigo],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    // Search Bar
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: "Search properties by description...",
-                          prefixIcon:
-                              const Icon(Icons.search, color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 15,
-                            horizontal: 10,
-                          ),
-                          suffixIcon: _isSearching
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    _filterProperties('');
-                                  },
-                                )
-                              : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                        onChanged: _filterProperties,
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Image Slider
-              ImageSlider(images: consts.sliderBuyImages),
-              const SizedBox(height: 16),
-
-              // Properties List Title
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  _isSearching
-                      ? "Search Results (${_filteredProperties.length})"
-                      : "Available Properties",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Properties List
-              FutureBuilder<List<Property>>(
-                future: _propertiesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return _buildShimmerLoading();
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        "Error: ${snapshot.error}",
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText:
+                            "Search properties by description, title, or location...",
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.grey),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 10,
                         ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: _clearSearch,
+                              )
+                            : null,
                       ),
-                    );
-                  } else if (snapshot.data == null || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text("No properties found."),
-                    );
-                  }
-
-                  final properties =
-                      _isSearching ? _filteredProperties : snapshot.data!;
-
-                  if (_isSearching && _filteredProperties.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "No properties found matching your search",
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: properties.length,
-                    itemBuilder: (context, index) {
-                      return _buildPropertyCard(properties[index]);
-                    },
-                  );
-                },
+                      onChanged: _handleSearch,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            // Image Slider
+            ImageSlider(images: consts.sliderBuyImages),
+            const SizedBox(height: 8),
+
+            // Properties List
+            Expanded(
+              child: !_isInitialized
+                  ? const Center(child: CircularProgressIndicator())
+                  : Consumer<PropertyProvider>(
+                      builder: (context, propertyProvider, child) {
+                        if (propertyProvider.isLoading) {
+                          return _buildShimmerLoading();
+                        }
+
+                        if (propertyProvider.error != null) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Error: ${propertyProvider.error}",
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _initializeData,
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final properties = propertyProvider.buyProperties;
+
+                        if (properties.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _searchController.text.isNotEmpty
+                                      ? Icons.search_off
+                                      : Icons.home,
+                                  size: 64,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _searchController.text.isNotEmpty
+                                      ? "No properties found matching your search"
+                                      : "No properties available for buying",
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 16,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Properties List Title
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                _searchController.text.isNotEmpty
+                                    ? "Search Results (${properties.length})"
+                                    : "Available Properties (${properties.length})",
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: () =>
+                                    propertyProvider.refreshProperties(),
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  itemCount: properties.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildPropertyCard(
+                                        properties[index]);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -213,28 +236,32 @@ class _BuyPropertyState extends State<BuyProperty> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(12),
-        leading: FutureBuilder<http.Response>(
-          future: PropertyOwnerApi.getImageByPropertyId(property.id!),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
-            } else if (snapshot.hasError) {
-              return const Icon(Icons.error, color: Colors.red);
-            } else if (snapshot.hasData && snapshot.data!.statusCode == 200) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  snapshot.data!.bodyBytes,
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                ),
-              );
-            } else {
-              return const Icon(Icons.image, size: 60, color: Colors.grey);
-            }
-          },
-        ),
+        leading: property.id == null
+            ? const Icon(Icons.image, size: 60, color: Colors.grey)
+            : FutureBuilder<http.Response>(
+                future: PropertyOwnerApi.getImageByPropertyId(property.id!),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    return const Icon(Icons.error, color: Colors.red);
+                  } else if (snapshot.hasData &&
+                      snapshot.data!.statusCode == 200) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        snapshot.data!.bodyBytes,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  } else {
+                    return const Icon(Icons.image,
+                        size: 60, color: Colors.grey);
+                  }
+                },
+              ),
         title: Text(
           property.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -254,7 +281,51 @@ class _BuyPropertyState extends State<BuyProperty> {
   }
 
   Widget _buildShimmerLoading() {
-    return const Center(child: CircularProgressIndicator());
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            height: 80,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  color: Colors.grey[300],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: double.infinity,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 12,
+                        width: 150,
+                        color: Colors.grey[300],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
