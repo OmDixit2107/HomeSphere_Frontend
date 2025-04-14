@@ -32,7 +32,7 @@ class PropertyOwnerApi {
           print('🖼️ Processing image: ${image.path} (type: $mimeType)');
 
           var imageFile = await http.MultipartFile.fromPath(
-            'images', // Changed from 'imageFile' to match server expectation
+            'imageFile', // Changed from 'imageFile' to match server expectation
             image.path,
             contentType: MediaType.parse(mimeType ?? 'image/jpeg'),
           );

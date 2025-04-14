@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 
 class UserApi {
   static const String baseUrl = 'http://10.0.2.2:8090/api/users';
+  static http.Client client =
+      http.Client(); // This allows you to inject mock clients during testing
 
   // Create a new user
   static Future<User?> createUser(User user) async {

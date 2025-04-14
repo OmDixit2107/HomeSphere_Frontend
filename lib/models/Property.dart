@@ -53,7 +53,7 @@ class Property {
       'type': type,
       'status': status,
       'emiAvailable': emiAvailable,
-      'images': images,
+      // 'images': images,
     };
   }
 

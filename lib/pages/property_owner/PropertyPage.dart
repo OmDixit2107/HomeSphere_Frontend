@@ -386,11 +386,12 @@ ${property.description}
                             : Colors.red.shade100,
                         Icons.check_circle,
                       ),
-                      if (property.emiAvailable)
+                      if (property.status.toLowerCase() == "available" &&
+                          property.type.toLowerCase() == "buy")
                         GestureDetector(
                           onTap: () => _showEmiCalculator(context),
                           child: _buildPropertyTag(
-                            "Calculate EMI",
+                            "EMI Available",
                             Colors.purple.shade100,
                             Icons.calculate,
                           ),
