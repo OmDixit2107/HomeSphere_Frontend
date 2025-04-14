@@ -57,6 +57,7 @@ class Authfunctions {
 
     await prefs.remove('JSESSIONID');
     await prefs.remove('userRole');
+    await prefs.remove('email');
     return true;
   }
 

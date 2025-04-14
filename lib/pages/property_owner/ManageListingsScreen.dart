@@ -23,6 +23,73 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
     _propertiesFuture = PropertyOwnerApi.getPropertiesByUserId(widget.userId);
   }
 
+  Future<void> _deleteProperty(Property property) async {
+    try {
+      // Show confirmation dialog
+      bool confirmDelete = await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Delete Property'),
+                content: Text(
+                    'Are you sure you want to delete "${property.title}"?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              );
+            },
+          ) ??
+          false;
+
+      if (confirmDelete) {
+        // Show loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Deleting property...')),
+        );
+
+        // Call the API to delete the property
+        bool success = await PropertyOwnerApi.deleteProperty(property.id!);
+
+        if (!mounted) return;
+
+        if (success) {
+          // Refresh the properties list
+          setState(() {
+            _propertiesFuture =
+                PropertyOwnerApi.getPropertiesByUserId(widget.userId);
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Property deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete property'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting property: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,19 +137,26 @@ class _ManageListingsScreenState extends State<ManageListingsScreen> {
                   title: Text(property.title,
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text("${property.location} - ₹${property.price}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () {
-                      // Navigate to edit property screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return EditProperty(propertyId: property.id!);
-                          },
-                        ),
-                      );
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  EditProperty(propertyId: property.id!),
+                            ),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteProperty(property),
+                      ),
+                    ],
                   ),
                   onTap: () {
                     Navigator.push(

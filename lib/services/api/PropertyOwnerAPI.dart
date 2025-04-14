@@ -10,33 +10,61 @@ class PropertyOwnerApi {
 
   static Future<Property?> createProperty(
       Property property, List<File> images) async {
-    final url = Uri.parse('$baseUrl/create');
+    try {
+      print('📤 Creating property with title: ${property.title}');
+      print('📸 Number of images to upload: ${images.length}');
 
-    // Create a multipart request
-    var request = http.MultipartRequest('POST', url);
+      final url = Uri.parse('$baseUrl/create');
+      print('🌐 Making request to: $url');
 
-    // Add the property object to the form data
-    request.fields['property'] = jsonEncode(property.toJson());
+      // Create a multipart request
+      var request = http.MultipartRequest('POST', url);
 
-    // Add images to the form data
-    for (var image in images) {
-      var mimeType = lookupMimeType(image.path);
-      var imageFile = await http.MultipartFile.fromPath(
-        'imageFile',
-        image.path,
-        contentType: MediaType.parse(mimeType ?? 'image/jpeg'),
-      );
-      request.files.add(imageFile);
-    }
+      // Add the property object to the form data
+      final propertyJson = property.toJson();
+      print('📦 Property JSON: $propertyJson');
+      request.fields['property'] = jsonEncode(propertyJson);
 
-    // Send the request
-    var response = await request.send();
+      // Add images to the form data
+      for (var image in images) {
+        try {
+          var mimeType = lookupMimeType(image.path);
+          print('🖼️ Processing image: ${image.path} (type: $mimeType)');
 
-    if (response.statusCode == 200) {
-      var responseData = await response.stream.bytesToString();
-      return Property.fromJson(jsonDecode(responseData));
-    } else {
-      print("Error: ${response.statusCode}");
+          var imageFile = await http.MultipartFile.fromPath(
+            'images', // Changed from 'imageFile' to match server expectation
+            image.path,
+            contentType: MediaType.parse(mimeType ?? 'image/jpeg'),
+          );
+          request.files.add(imageFile);
+        } catch (e) {
+          print('❌ Error processing image ${image.path}: $e');
+        }
+      }
+
+      // Add headers if needed
+      request.headers['Content-Type'] = 'multipart/form-data';
+
+      // Send the request
+      print('📤 Sending request...');
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Property created successfully');
+        return Property.fromJson(jsonDecode(response.body));
+      } else {
+        print('❌ Failed to create property');
+        print('Status Code: ${response.statusCode}');
+        print('Error Response: ${response.body}');
+        throw Exception('Failed to create property: ${response.body}');
+      }
+    } catch (e, stackTrace) {
+      print('❌ Exception while creating property: $e');
+      print('📚 Stack trace: $stackTrace');
       return null;
     }
   }
